@@ -871,7 +871,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.resolve(__dirname, "dist");
+    // التعديل هنا بناءً على طلبك
+    const distPath = path.resolve(__dirname, "client-dist");
     app.use(express.static(distPath));
     
     app.get("*", (req, res) => {
