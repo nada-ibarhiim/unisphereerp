@@ -25,9 +25,18 @@ export default function App() {
 
   const storedUser = localStorage.getItem('user');
 
-  const [user, setUser] = useState<any>(
-    storedUser ? JSON.parse(storedUser) : null
-  );
+  let parsedUser = null;
+
+  try {
+    parsedUser = storedUser ? JSON.parse(storedUser) : null;
+  } catch (error) {
+    console.error('Invalid user data in localStorage');
+
+    localStorage.removeItem('user');
+    parsedUser = null;
+  }
+
+  const [user, setUser] = useState<any>(parsedUser);
 
   const handleLogin = (data: { token: string; user: any }) => {
     localStorage.setItem('token', data.token);
