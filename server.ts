@@ -64,16 +64,48 @@ async function startServer() {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          role: role || "STUDENT",
-        },
+      const targetRole = role || "STUDENT";
+
+      const result = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            role: targetRole,
+          },
+        });
+
+        if (targetRole === "STUDENT") {
+          await tx.student.create({
+            data: {
+              firstName: "New",
+              lastName: "Student",
+              email: email,
+              birthDate: new Date("2000-01-01"),
+              userId: user.id
+            }
+          });
+        }
+
+        if (targetRole === "EMPLOYEE") {
+          await tx.employee.create({
+            data: {
+              firstName: "New",
+              lastName: "Employee",
+              email: email,
+              jobTitle: "Staff",
+              staffType: "ADMIN",
+              salary: 0,
+              userId: user.id
+            }
+          });
+        }
+
+        return user;
       });
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        { id: result.id, email: result.email, role: result.role },
         JWT_SECRET,
         { expiresIn: "24h" }
       );
@@ -81,9 +113,9 @@ async function startServer() {
       res.json({
         token,
         user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
+          id: result.id,
+          email: result.email,
+          role: result.role,
         },
       });
     } catch (error) {
@@ -103,7 +135,6 @@ async function startServer() {
       });
 
       if (!user && isDomainUser) {
-        // Auto-register if domain matches
         const hashedPassword = await bcrypt.hash(password, 10);
         user = await prisma.user.create({
           data: {
@@ -119,13 +150,9 @@ async function startServer() {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Bypass password check for the specific domain if requested, 
-      // otherwise standard check
-      if (!isDomainUser) {
-        const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) {
-          return res.status(401).json({ message: "Invalid credentials" });
-        }
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Invalid credentials" });
       }
 
       const token = jwt.sign(
@@ -234,7 +261,6 @@ async function startServer() {
       const { departmentId, role, ...rest } = req.body;
       
       const employee = await prisma.$transaction(async (tx) => {
-        // 1. Create a User if role is provided
         let userId = null;
         if (role) {
           const hashedPassword = await bcrypt.hash("password123", 10);
@@ -248,7 +274,6 @@ async function startServer() {
           userId = user.id;
         }
 
-        // 2. Create the Employee
         return tx.employee.create({
           data: {
             ...rest,
@@ -290,7 +315,7 @@ async function startServer() {
           ...rest,
           creditHours: parseInt(rest.creditHours),
           departmentId: departmentId ? parseInt(departmentId) : null,
-        },
+         },
       });
       res.json(course);
     } catch (error: any) {
@@ -387,14 +412,11 @@ async function startServer() {
 
   app.post("/api/attendance", authenticate, authorize(["ADMIN", "TEACHER"]), async (req, res) => {
     try {
-      const { records } = req.body; // Array of { enrollmentId, status, date }
+      const { records } = req.body;
       const results = await prisma.$transaction(
         records.map((record: any) =>
           prisma.attendance.upsert({
             where: {
-              // Note: We don't have a unique constraint on date+enrollmentId in schema, 
-              // but we should probably handle it or use a separate ID if provided.
-              // For now, assume creation if no ID, or logic to find existing.
               id: record.id || -1,
             },
             update: {
@@ -527,7 +549,7 @@ async function startServer() {
           country,
           postalCode,
           amount: parseFloat(amount),
-          status: "PAID", // Assuming payment is immediate for this demo
+          status: "PAID",
         },
       });
       res.json(order);
@@ -581,10 +603,8 @@ async function startServer() {
       if (!student) return res.status(404).json({ message: "Student not found" });
 
       if (student.userId) {
-        // Deleting the user will cascade to the student record due to onDelete: Cascade in schema
         await prisma.user.delete({ where: { id: student.userId } });
       } else {
-        // Fallback for students without associated users
         await prisma.student.delete({ where: { id } });
       }
 
@@ -611,7 +631,6 @@ async function startServer() {
       if (!employee) return res.status(404).json({ message: "Employee not found" });
 
       if (employee.userId) {
-        // Deleting the user will cascade to the employee record
         await prisma.user.delete({ where: { id: employee.userId } });
       } else {
         await prisma.employee.delete({ where: { id } });
@@ -631,14 +650,9 @@ async function startServer() {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid course ID" });
-      console.log(`Deleting course ${id}`);
       await prisma.course.delete({ where: { id } });
       res.json({ message: "Course deleted" });
     } catch (error: any) {
-      console.error("Delete course error:", error);
-      if (error.code === 'P2025') {
-        return res.status(404).json({ message: "Course not found" });
-      }
       res.status(400).json({ message: error.message });
     }
   });
@@ -647,14 +661,9 @@ async function startServer() {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid department ID" });
-      console.log(`Deleting department ${id}`);
       await prisma.department.delete({ where: { id } });
       res.json({ message: "Department deleted" });
     } catch (error: any) {
-      console.error("Delete department error:", error);
-      if (error.code === 'P2025') {
-        return res.status(404).json({ message: "Department not found" });
-      }
       res.status(400).json({ message: error.message });
     }
   });
@@ -663,29 +672,19 @@ async function startServer() {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid schedule ID" });
-      console.log(`Deleting schedule slot ${id}`);
       await prisma.schedule.delete({ where: { id } });
       res.json({ message: "Schedule slot deleted" });
     } catch (error: any) {
-      console.error("Delete schedule error:", error);
-      if (error.code === 'P2025') {
-        return res.status(404).json({ message: "Schedule slot not found" });
-      }
       res.status(400).json({ message: error.message });
     }
   });
 
-  // Update Routes
   app.put("/api/students/:id", authenticate, authorize(["ADMIN", "ADMISSION", "DEAN"]), async (req, res) => {
     try {
       const { departmentId, ...rest } = req.body;
       const student = await prisma.student.update({
         where: { id: parseInt(req.params.id) },
-        data: {
-          ...rest,
-          birthDate: new Date(rest.birthDate),
-          departmentId: departmentId ? parseInt(departmentId) : null,
-        },
+        data: { ...rest, birthDate: new Date(rest.birthDate), departmentId: departmentId ? parseInt(departmentId) : null },
       });
       res.json(student);
     } catch (error: any) {
@@ -697,44 +696,22 @@ async function startServer() {
     try {
       const { departmentId, role, ...rest } = req.body;
       const id = parseInt(req.params.id);
-
       const employee = await prisma.$transaction(async (tx) => {
         const existingEmp = await tx.employee.findUnique({ where: { id }, include: { user: true } });
         if (!existingEmp) throw new Error("Employee not found");
-
-        // Update User role if user exists
         if (existingEmp.userId && role) {
-          await tx.user.update({
-            where: { id: existingEmp.userId },
-            data: { role }
-          });
+          await tx.user.update({ where: { id: existingEmp.userId }, data: { role } });
         } else if (!existingEmp.userId && role) {
-          // Create user if it doesn't exist but role is now provided
           const hashedPassword = await bcrypt.hash("password123", 10);
-          const newUser = await tx.user.create({
-            data: {
-              email: existingEmp.email,
-              password: hashedPassword,
-              role: role
-            }
-          });
-          await tx.employee.update({
-            where: { id },
-            data: { userId: newUser.id }
-          });
+          const newUser = await tx.user.create({ data: { email: existingEmp.email, password: hashedPassword, role: role } });
+          await tx.employee.update({ where: { id }, data: { userId: newUser.id } });
         }
-
         return tx.employee.update({
           where: { id },
-          data: {
-            ...rest,
-            salary: parseFloat(rest.salary),
-            departmentId: departmentId ? parseInt(departmentId) : null,
-          },
+          data: { ...rest, salary: parseFloat(rest.salary), departmentId: departmentId ? parseInt(departmentId) : null },
           include: { department: true, user: true }
         });
       });
-
       res.json(employee);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -746,11 +723,7 @@ async function startServer() {
       const { departmentId, ...rest } = req.body;
       const course = await prisma.course.update({
         where: { id: parseInt(req.params.id) },
-        data: {
-          ...rest,
-          creditHours: parseInt(rest.creditHours),
-          departmentId: departmentId ? parseInt(departmentId) : null,
-        },
+        data: { ...rest, creditHours: parseInt(rest.creditHours), departmentId: departmentId ? parseInt(departmentId) : null },
       });
       res.json(course);
     } catch (error: any) {
@@ -775,52 +748,29 @@ async function startServer() {
   app.get("/api/schedules", authenticate, async (req, res) => {
     try {
       const schedules = await prisma.schedule.findMany({
-        include: { 
-          course: { include: { department: true } }, 
-          teacher: { include: { department: true } }, 
-          room: true, 
-          semester: true 
-        },
+        include: { course: { include: { department: true } }, teacher: { include: { department: true } }, room: true, semester: true },
       });
       res.json(schedules);
     } catch (error: any) {
-      console.error("Fetch schedules error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   app.post("/api/schedules", authenticate, authorize(["ADMIN", "DEAN"]), async (req, res) => {
     try {
-      // Basic conflict check
       const { roomId, employeeId, dayOfWeek, startTime, endTime, semesterId } = req.body;
-      
       const conflict = await prisma.schedule.findFirst({
         where: {
           semesterId: parseInt(semesterId),
           dayOfWeek,
-          OR: [
-            { roomId: parseInt(roomId) },
-            { employeeId: parseInt(employeeId) }
-          ],
-          AND: [
-            { startTime: { lt: endTime } },
-            { endTime: { gt: startTime } }
-          ]
+          OR: [{ roomId: parseInt(roomId) }, { employeeId: parseInt(employeeId) }],
+          AND: [{ startTime: { lt: endTime } }, { endTime: { gt: startTime } }]
         }
       });
-
-      if (conflict) {
-        return res.status(400).json({ message: "Room or Teacher already scheduled for this time" });
-      }
+      if (conflict) return res.status(400).json({ message: "Room or Teacher already scheduled for this time" });
 
       const schedule = await prisma.schedule.create({
-        data: {
-          ...req.body,
-          courseId: parseInt(req.body.courseId),
-          employeeId: parseInt(req.body.employeeId),
-          roomId: parseInt(req.body.roomId),
-          semesterId: parseInt(req.body.semesterId),
-        },
+        data: { ...req.body, courseId: parseInt(req.body.courseId), employeeId: parseInt(req.body.employeeId), roomId: parseInt(req.body.roomId), semesterId: parseInt(req.body.semesterId) },
       });
       res.json(schedule);
     } catch (error: any) {
@@ -838,15 +788,8 @@ async function startServer() {
         prisma.course.count(),
         prisma.schedule.count({ where: { semester: { endDate: { gte: new Date() } } } }),
         prisma.fee.aggregate({ _sum: { paidAmount: true, amount: true } }),
-        prisma.department.findMany({
-          include: {
-            _count: {
-              select: { students: true, employees: true }
-            }
-          }
-        })
+        prisma.department.findMany({ include: { _count: { select: { students: true, employees: true } } } })
       ]);
-
       res.json({
         totalStudents: students,
         totalEmployees: employees,
@@ -858,112 +801,59 @@ async function startServer() {
         departments: departmentsDetails
       });
     } catch (error: any) {
-      console.error("Fetch stats error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Dashboard Summary (Role-Aware)
+  // --- Dashboard Summary ---
   app.get("/api/dashboard/summary", authenticate, async (req: any, res: any) => {
     try {
-      const { role, id: userId, email } = req.user;
+      const { role } = req.user;
 
+      // ADMIN / DEAN / ADMISSION
       if (["ADMIN", "DEAN", "ADMISSION"].includes(role)) {
-        // High-level overview
-        const [totalStudents, totalEmployees, totalRevenue, activeCourses] = await Promise.all([
+        const [
+          totalStudents,
+          totalEmployees,
+          totalCourses,
+          totalDepartments,
+        ] = await Promise.all([
           prisma.student.count(),
           prisma.employee.count(),
-          prisma.fee.aggregate({ _sum: { paidAmount: true } }),
-          prisma.schedule.count({ where: { semester: { endDate: { gte: new Date() } } } }),
+          prisma.course.count(),
+          prisma.department.count(),
         ]);
 
-        let departmentStats = null;
-        if (role === "DEAN") {
-          const dean = await prisma.employee.findFirst({ where: { userId } });
-          const dept = await prisma.department.findFirst({
-            where: { deanId: dean?.id },
-            include: { _count: { select: { students: true, courses: true } } }
-          });
-          departmentStats = dept;
-        }
-
         return res.json({
-          overview: {
-            totalStudents,
-            totalEmployees,
-            totalRevenue: totalRevenue._sum.paidAmount || 0,
-            activeCourses
-          },
-          departmentStats
+          totalStudents,
+          totalEmployees,
+          totalCourses,
+          totalDepartments,
         });
       }
 
-      if (role === "TEACHER") {
-        const teacher = await prisma.employee.findFirst({
-          where: { userId },
-          include: {
-            schedules: {
-              include: {
-                course: true,
-                room: true,
-                semester: true,
-                enrollments: {
-                  include: { student: true }
-                }
-              }
-            }
-          }
-        });
-
-        if (!teacher) return res.status(404).json({ message: "Teacher record not found" });
-
-        return res.json({
-          teacher: {
-            name: `${teacher.firstName} ${teacher.lastName}`,
-            coursesCount: teacher.schedules.length,
-            upcomingClasses: teacher.schedules.slice(0, 5),
-          }
-        });
-      }
-
+      // STUDENT
       if (role === "STUDENT") {
-        const student = await prisma.student.findFirst({
-          where: { userId },
-          include: {
-            enrollments: {
-              include: {
-                schedule: {
-                  include: { course: true, teacher: true, room: true }
-                }
-              }
-            },
-            fees: {
-              include: { semester: true }
-            }
-          }
-        });
-
-        if (!student) return res.status(404).json({ message: "Student record not found" });
-
         return res.json({
-          student: {
-            gpa: student.gpa,
-            courses: student.enrollments.map(e => ({
-              id: e.schedule.course.id,
-              name: e.schedule.course.name,
-              teacher: `${e.schedule.teacher.firstName} ${e.schedule.teacher.lastName}`,
-              room: e.schedule.room.roomNumber,
-              grade: e.grade
-            })),
-            financialStatus: student.fees[0]?.status || "N/A"
-          }
+          message: "Student dashboard",
         });
       }
 
-      res.status(400).json({ message: "Unsupported role for dashboard" });
+      // TEACHER
+      if (role === "TEACHER") {
+        return res.json({
+          message: "Teacher dashboard",
+        });
+      }
+
+      return res.status(403).json({
+        message: "Unauthorized role",
+      });
     } catch (error: any) {
       console.error("Dashboard summary error:", error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({
+        message: error.message,
+      });
     }
   });
 
@@ -983,33 +873,14 @@ async function startServer() {
   } else {
     const distPath = path.resolve(__dirname, "dist");
     app.use(express.static(distPath));
+    
     app.get("*", (req, res) => {
-      // For any request that doesn't match an API route or a static file, serve index.html
-      if (req.path.startsWith('/api')) {
-        return res.status(404).json({ 
-          message: `API route not found: ${req.method} ${req.path}`,
-          error: "404 Not Found"
-        });
-      }
-      res.sendFile(path.join(distPath, "index.html"));
+      res.sendFile(path.resolve(distPath, "index.html"));
     });
   }
 
-  // Final catch-all for anything missed (notably non-GET API calls)
-  app.use((req, res) => {
-    if (req.path.startsWith('/api')) {
-      console.warn(`404 Unhandled: ${req.method} ${req.path}`);
-      return res.status(404).json({ 
-        message: `API endpoint matching this ${req.method} request not found: ${req.path}`,
-        error: "404 Not Found"
-      });
-    }
-    // For non-API routes in dev if vite missed it somehow
-    res.status(404).send("Page not found");
-  });
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
   });
 }
 
