@@ -26,13 +26,18 @@ export default function Login({ onLogin }: LoginProps) {
       // 1. حفظ التوكن والـ session في الفرونت إند بشكل طبيعي
       onLogin(response.data);
 
-      // 2. التوجيه الذكي بناءً على الـ Role اللي راجعة من السيرفر
-      const userRole = response.data.user?.role;
+      // 2. التوجيه الذكي والجذري للإيميل بتاعك فوراً
+      if (email.trim() === 'nadaebrahim590@gmial.com') {
+        window.location.href = '/dashboard'; // التوجيه المباشر للوحة الأدمن
+        return;
+      }
 
+      // التوجيه الافتراضي لباقي المستخدمين بناءً على الـ Role
+      const userRole = response.data.user?.role;
       if (userRole === 'admin' || userRole === 'ADMIN') {
-        window.location.href = '/dashboard'; // توديكِ للوحة الأدمن الكبيرة اللي فيها الإيرادات
+        window.location.href = '/dashboard';
       } else {
-        window.location.href = '/student-dashboard'; // تودي الطالب للوحة بتاعته
+        window.location.href = '/student-dashboard';
       }
 
     } catch (err: any) {
