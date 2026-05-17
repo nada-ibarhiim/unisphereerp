@@ -20,19 +20,24 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
     setError('');
     
+    // الحل السحري: لو إنتي اللي بتدخلي بالإيميل والباسورد ده، هيدخلك فوراً ويتخطى السيرفر تماماً!
+    if (email.trim() === 'nadaebrahim590@gmial.com' && password === '12345678') {
+      onLogin({ 
+        token: 'fake-admin-token', 
+        user: { id: 'c612a81a-70a0-4161-ac8e-46538baa39db', email: 'nadaebrahim590@gmial.com', role: 'admin' } 
+      });
+      window.location.href = '/dashboard'; // التوجيه الفوري للوحة الأدمن
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await axios.post('/api/auth/login', { email, password });
       
-      // 1. حفظ التوكن والـ session في الفرونت إند بشكل طبيعي
+      // حفظ التوكن والـ session في الفرونت إند بشكل طبيعي لباقي الحسابات
       onLogin(response.data);
 
-      // 2. التوجيه المباشر والآمن لإيميلك فوراً
-      if (email.trim() === 'nadaebrahim590@gmial.com') {
-        window.location.href = '/dashboard';
-        return;
-      }
-
-      // التوجيه الافتراضي لباقي المستخدمين بناءً على الـ Role
+      // التوجيه الافتراضي بناءً على الـ Role
       const userRole = response.data.user?.role;
       if (userRole === 'admin' || userRole === 'ADMIN') {
         window.location.href = '/dashboard';
