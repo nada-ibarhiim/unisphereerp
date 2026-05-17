@@ -22,7 +22,19 @@ export default function Login({ onLogin }: LoginProps) {
     
     try {
       const response = await axios.post('/api/auth/login', { email, password });
+      
+      // 1. حفظ التوكن والـ session في الفرونت إند بشكل طبيعي
       onLogin(response.data);
+
+      // 2. التوجيه الذكي بناءً على الـ Role اللي راجعة من السيرفر
+      const userRole = response.data.user?.role;
+
+      if (userRole === 'admin' || userRole === 'ADMIN') {
+        window.location.href = '/dashboard'; // توديكِ للوحة الأدمن الكبيرة اللي فيها الإيرادات
+      } else {
+        window.location.href = '/student-dashboard'; // تودي الطالب للوحة بتاعته
+      }
+
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
