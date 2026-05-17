@@ -15,12 +15,11 @@ if (typeof window !== 'undefined') {
   }));
 
   // 2. مراقبة الـ Location (التحويلات): لو أي كود حاول يوديكي لـ /login، المتصفح هيرفض ويثبتك في مكانك!
-  const originalLocation = window.location.href;
   
   // بنعمل حظر على الـ assign والـ replace اللي بيستخدموهم الكود للطرد
   const originalAssign = window.location.assign;
   window.location.assign = function(url) {
-    if (url.includes('/login')) {
+    if (String(url).includes('/login')) {
       console.log("Blocked redirection to login!");
       return; // ممنوع تروح للوج إن!
     }
@@ -29,7 +28,7 @@ if (typeof window !== 'undefined') {
 
   const originalReplace = window.location.replace;
   window.location.replace = function(url) {
-    if (url.includes('/login')) {
+    if (String(url).includes('/login')) {
       console.log("Blocked redirection to login!");
       return; // ممنوع تروح للوج إن!
     }
@@ -39,7 +38,7 @@ if (typeof window !== 'undefined') {
   // لو الكود استخدم window.location.href = '/login' مباشرة
   Object.defineProperty(window.location, 'href', {
     set: function(url) {
-      if (url.includes('/login')) {
+      if (String(url).includes('/login')) {
         console.log("Blocked property redirection to login!");
         return; // حظر الطرد
       }
