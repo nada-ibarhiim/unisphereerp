@@ -4,8 +4,7 @@ import {
   GraduationCap, 
   BookOpen, 
   DollarSign, 
-  Clock,
-  CheckCircle2
+  Clock
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import axios from 'axios';
@@ -37,7 +36,7 @@ export default function Dashboard({ user }: DashboardProps) {
         }
       } catch (err: any) {
         console.error('Dashboard fetch error:', err);
-      } {
+      } finally {
         setLoading(false);
       }
     };
@@ -64,7 +63,6 @@ export default function Dashboard({ user }: DashboardProps) {
 
     return (
       <div className="space-y-6">
-        {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {cards.map((card, i) => (
             <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
@@ -79,7 +77,6 @@ export default function Dashboard({ user }: DashboardProps) {
           ))}
         </div>
 
-        {/* Custom Data Grid (البديل الآمن للـ Charts) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
             <h3 className="text-lg font-bold text-slate-800 mb-4">Recent System Logs</h3>
@@ -113,4 +110,25 @@ export default function Dashboard({ user }: DashboardProps) {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+            <h3 className="text-lg font-bold text-slate-800">System Performance</h3>
+            <div className="p-4 bg-slate-50 rounded-xl">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-bold text-slate-500">Uptime</span>
+                <span className="text-teal-500 font-bold">99.9%</span>
+              </div>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-xl">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-bold text-slate-500">Storage Usage</span>
+                <span className="text-pink-500 font-bold">42%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <div className="text-center font-bold text-slate-400 mt-20">UniSphere Dashboard Loaded.</div>;
+}
