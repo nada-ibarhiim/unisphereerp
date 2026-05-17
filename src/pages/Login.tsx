@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // ضفنا useNavigate هنا
 import axios from 'axios';
 
 interface LoginProps {
@@ -14,35 +14,33 @@ export default function Login({ onLogin }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate(); // عرفنا الـ navigate هنا
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     
-    // الحل السحري: لو إنتي اللي بتدخلي بالإيميل والباسورد ده، هيدخلك فوراً ويتخطى السيرفر تماماً!
+    // الحل السحري: التحويل الداخلي السلس بدون ريفريش للصفحة
     if (email.trim() === 'nadaebrahim590@gmial.com' && password === '12345678') {
       onLogin({ 
         token: 'fake-admin-token', 
         user: { id: 'c612a81a-70a0-4161-ac8e-46538baa39db', email: 'nadaebrahim590@gmial.com', role: 'admin' } 
       });
-      window.location.href = '/dashboard'; // التوجيه الفوري للوحة الأدمن
       setLoading(false);
+      navigate('/'); // التحويل لصفحة الداشبورد الرئيسية داخلياً فوراً
       return;
     }
     
     try {
       const response = await axios.post('/api/auth/login', { email, password });
-      
-      // حفظ التوكن والـ session في الفرونت إند بشكل طبيعي لباقي الحسابات
       onLogin(response.data);
 
-      // التوجيه الافتراضي بناءً على الـ Role
       const userRole = response.data.user?.role;
       if (userRole === 'admin' || userRole === 'ADMIN') {
-        window.location.href = '/dashboard';
+        navigate('/');
       } else {
-        window.location.href = '/student-dashboard';
+        navigate('/student-dashboard');
       }
 
     } catch (err: any) {
