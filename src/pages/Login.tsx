@@ -26,9 +26,9 @@ export default function Login({ onLogin }: LoginProps) {
       // 1. حفظ التوكن والـ session في الفرونت إند بشكل طبيعي
       onLogin(response.data);
 
-      // 2. التوجيه الذكي والجذري للإيميل بتاعك فوراً
+      // 2. التوجيه المباشر والآمن لإيميلك فوراً
       if (email.trim() === 'nadaebrahim590@gmial.com') {
-        window.location.href = '/dashboard'; // التوجيه المباشر للوحة الأدمن
+        window.location.href = '/dashboard';
         return;
       }
 
