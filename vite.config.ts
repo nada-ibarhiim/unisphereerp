@@ -20,7 +20,8 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
-      outDir: "client-dist"
+      outDir: "dist", // غيرناها هنا عشان تترمي في dist علطول من غير أوامر نقل!
+      emptyOutDir: true
     },
 
     server: {
