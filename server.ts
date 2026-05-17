@@ -874,7 +874,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.resolve(__dirname, "client-dist");
+    // تم التعديل هنا ليقرأ من المجلد dist مباشرة وبشكل آمن من جذر المشروع
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     
     app.get("*", (req, res) => {
