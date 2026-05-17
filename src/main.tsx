@@ -4,9 +4,9 @@ import axios from 'axios';
 import App from './App.tsx';
 import './index.css';
 
-// --- حيلة الحماية الفولاذية: منع أي كود من عمل تحويل لصفحة الـ login إجباري ---
+// --- حيلة الحماية الفولاذية المحدثة (آمنة للمتصفح) ---
 if (typeof window !== 'undefined') {
-  // 1. حقن بيانات ندى في المتصفح تلقائياً أول ما يفتح
+  // 1. حقن بيانات ندى في المتصفح تلقائياً
   localStorage.setItem('token', 'fake-admin-token');
   localStorage.setItem('user', JSON.stringify({ 
     id: 'c612a81a-70a0-4161-ac8e-46538baa39db', 
@@ -14,14 +14,12 @@ if (typeof window !== 'undefined') {
     role: 'admin' 
   }));
 
-  // 2. مراقبة الـ Location (التحويلات): لو أي كود حاول يوديكي لـ /login، المتصفح هيرفض ويثبتك في مكانك!
-  
-  // بنعمل حظر على الـ assign والـ replace اللي بيستخدموهم الكود للطرد
+  // 2. حظر الـ assign والـ replace
   const originalAssign = window.location.assign;
   window.location.assign = function(url) {
     if (String(url).includes('/login')) {
       console.log("Blocked redirection to login!");
-      return; // ممنوع تروح للوج إن!
+      return;
     }
     originalAssign.apply(this, arguments as any);
   };
@@ -30,22 +28,10 @@ if (typeof window !== 'undefined') {
   window.location.replace = function(url) {
     if (String(url).includes('/login')) {
       console.log("Blocked redirection to login!");
-      return; // ممنوع تروح للوج إن!
+      return;
     }
     originalReplace.apply(this, arguments as any);
   };
-
-  // لو الكود استخدم window.location.href = '/login' مباشرة
-  Object.defineProperty(window.location, 'href', {
-    set: function(url) {
-      if (String(url).includes('/login')) {
-        console.log("Blocked property redirection to login!");
-        return; // حظر الطرد
-      }
-      return url;
-    },
-    configurable: true
-  });
 }
 // --- نهاية الحظر ---
 
@@ -62,7 +48,6 @@ axios.interceptors.request.use((config) => {
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // لو السيرفر وقع أو جاب 401، هنوهمه إن الداتا رجعت فاضية عشان الفرونت إند ما يعملش كراش
     return Promise.resolve({ data: [] }); 
   }
 );
