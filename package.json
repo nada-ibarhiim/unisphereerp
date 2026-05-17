@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "prisma generate && tsc && vite build",
-    "start": "node dist/server.js",
+    "start": "npx tsx server.ts"
     "dev": "tsx server.ts"
   },
   "dependencies": {
