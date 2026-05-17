@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "prisma generate && prisma db push && tsc && vite build",
+    "build": "prisma generate && prisma db push && tsc && vite build && (mv client-dist dist || true)",
     "start": "npm run build && npx tsx server.ts",
     "dev": "tsx server.ts"
   },
