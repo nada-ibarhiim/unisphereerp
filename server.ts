@@ -17,7 +17,10 @@ const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  
+  // البورت الافتراضي محلياً 3000، ويأخذ القيمة ديناميكياً في السيرفر السحابي
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+  const HOST = "0.0.0.0";
 
   app.use(cors());
   app.use(morgan("dev"));
@@ -871,7 +874,6 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // التعديل هنا بناءً على طلبك
     const distPath = path.resolve(__dirname, "client-dist");
     app.use(express.static(distPath));
     
@@ -880,8 +882,9 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+  // تشغيل السيرفر بالبورت الديناميكي والعنوان السحابي الصحيح
+  app.listen(PORT, HOST, () => {
+    console.log(`Server listening on http://${HOST}:${PORT}`);
   });
 }
 
