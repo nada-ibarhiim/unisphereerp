@@ -830,7 +830,7 @@ async function startServer() {
               select: { students: true, employees: true }
             }
           }
-        }
+        })
       ]);
 
       res.json({
