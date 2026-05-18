@@ -17,7 +17,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // التعديل هنا: قراءة البورت من البيئة أو استخدام 3000 كـ fallback كقيمة افتراضية لبيئة التطوير المحلية
+  const PORT = process.env.PORT || 3000;
 
   app.use(cors());
   app.use(morgan("dev"));
@@ -119,7 +120,7 @@ async function startServer() {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // [تعديل أمني مهم]: التحقق من كلمة المرور لجميع المستخدمين بدون استثناء لحماية السيرفر
+      // التحقق من كلمة المرور لجميع المستخدمين بدون استثناء لحماية السيرفر
       const isValid = await bcrypt.compare(password, user.password);
       if (!isValid) {
         return res.status(401).json({ message: "Invalid credentials" });
@@ -977,7 +978,7 @@ async function startServer() {
 
   // --- Start Listening ---
   app.listen(PORT, () => {
-    console.log(`🚀 Server is running on http://localhost:${PORT}`);
+    console.log(`🚀 Server is running on port: ${PORT}`);
     console.log(`🌍 Current Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }
